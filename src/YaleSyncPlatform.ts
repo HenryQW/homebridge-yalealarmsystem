@@ -31,20 +31,40 @@ import {
 	Service as HAPService,
 	Categories as HAPAccessoryCategory,
 	Characteristic as HAPCharacteristic,
-	uuid as HAPUUIDGenerator,
-	CharacteristicEventTypes,
+	uuid,
+	CharacteristicEventTypes as HAPCharacteristicEventTypes,
 	CharacteristicValue,
 	CharacteristicGetCallback,
 	CharacteristicSetCallback,
 	Nullable,
 } from 'hap-nodejs'
 import { YaleSyncPlatformConfig } from './YaleSyncPlatformConfig'
+import {
+	SecuritySystem,
+	AccessoryInformation,
+} from 'hap-nodejs/dist/lib/gen/HomeKit'
+
+// All of these are redeclared, and then reassigned below so we can elide the require('hap-nodejs').
+// This means hap-nodejs can just be a development dependency and we can reduce the package size.
+// Typescript 3.8 allows for import type {}, but we don't use that yet.
+let Service: typeof HAPService
+let Characteristic: typeof HAPCharacteristic
+let UUIDGenerator: typeof uuid
+let CharacteristicEventTypes: typeof HAPCharacteristicEventTypes
+let Categories: typeof HAPAccessoryCategory
 
 let PlatformAccessory: any
+
 let pluginName = 'homebridge-yalesyncalarm'
 let platformName = 'YaleSync'
 
 export default function(homebridge: any) {
+	Service = homebridge.hap.Service
+	Characteristic = homebridge.hap.Characteristic
+	UUIDGenerator = homebridge.hap.uuid
+	CharacteristicEventTypes = homebridge.hap.CharacteristicEventTypes
+	Categories = homebridge.hap.Categories
+
 	PlatformAccessory = homebridge.platformAccessory
 
 	homebridge.registerPlatform(
@@ -53,6 +73,31 @@ export default function(homebridge: any) {
 		YaleSyncPlatform, // constructor
 		true // dynamic
 	)
+}
+
+// TODO: Handle ".ALARM_TRIGGERED"
+function modeToCurrentState(mode: Yale.Panel.Mode) {
+	switch (mode) {
+		case Yale.Panel.Mode.arm:
+			return Characteristic.SecuritySystemCurrentState.AWAY_ARM
+		case Yale.Panel.Mode.disarm:
+			return Characteristic.SecuritySystemCurrentState.DISARMED
+		case Yale.Panel.Mode.home:
+			// HomeKit also exposes STAY_ARM. Yale doesn't distinguish between the concepts of "STAY_ARM" and "NIGHT_ARM"
+			// So we just arbitrarily always choose to map "home" <-> NIGHT_ARM.
+			return Characteristic.SecuritySystemCurrentState.NIGHT_ARM
+	}
+}
+
+function targetStateToMode(targetState: CharacteristicValue): Yale.Panel.Mode {
+	if (targetState === Characteristic.SecuritySystemTargetState.AWAY_ARM) {
+		return Yale.Panel.Mode.arm
+	} else if (targetState === Characteristic.SecuritySystemTargetState.DISARM) {
+		return Yale.Panel.Mode.disarm
+	} else {
+		// .STAY_ARM || .NIGHT_ARM
+		return Yale.Panel.Mode.home
+	}
 }
 
 class YaleSyncPlatform {
@@ -85,14 +130,14 @@ class YaleSyncPlatform {
 	async onDidFinishLaunching() {
 		this.log('Searching for devices')
 		//		await this.yale.update()
-		const uuid = HAPUUIDGenerator.generate(
+		const uuid = UUIDGenerator.generate(
 			`${pluginName}.${platformName}.panel.${this.username}`
 		)
 		if (this.accessories[uuid] === undefined) {
 			const accessory = new PlatformAccessory(
 				this.alarmName,
 				uuid,
-				HAPAccessoryCategory.SECURITY_SYSTEM
+				Categories.SECURITY_SYSTEM
 			)
 			accessory.context.identifier = this.username
 			this.configurePanel(accessory)
@@ -114,22 +159,25 @@ class YaleSyncPlatform {
 
 	configurePanel(accessory: any) {
 		if (this.accessories[accessory.UUID] === undefined) {
-			accessory
-				.getService(HAPService.AccessoryInformation) // Homebridge adds this service by default to all instances of PlatformAccessory
-				.setCharacteristic(HAPCharacteristic.Name, accessory.displayName)
-				.setCharacteristic(HAPCharacteristic.Manufacturer, 'Yale')
-				.setCharacteristic(HAPCharacteristic.Model, 'Yale IA-320')
+			// Homebridge adds this service by default to all instances of PlatformAccessory
+			const informationService: AccessoryInformation = accessory.getService(
+				Service.AccessoryInformation
+			)
+			informationService
+				.setCharacteristic(Characteristic.Name, accessory.displayName)
+				.setCharacteristic(Characteristic.Manufacturer, 'Yale')
+				.setCharacteristic(Characteristic.Model, 'Yale IA-320')
 				.setCharacteristic(
-					HAPCharacteristic.SerialNumber,
+					Characteristic.SerialNumber,
 					accessory.context.identifier
 				)
 
-			const service: HAPService =
-				accessory.getService(HAPService.SecuritySystem) !== undefined
-					? accessory.getService(HAPService.SecuritySystem)
-					: accessory.addService(HAPService.SecuritySystem)
-			service
-				.getCharacteristic(HAPCharacteristic.SecuritySystemCurrentState)
+			const securitySystem: SecuritySystem =
+				accessory.getService(Service.SecuritySystem) !== undefined
+					? accessory.getService(Service.SecuritySystem)
+					: accessory.addService(Service.SecuritySystem)
+			securitySystem
+				.getCharacteristic(Characteristic.SecuritySystemCurrentState)
 				?.on(
 					CharacteristicEventTypes.GET,
 					async (
@@ -145,33 +193,12 @@ class YaleSyncPlatform {
 							this.password
 						)
 						const mode = await Yale.Panel.getMode(accessToken)
-						switch (mode) {
-							case Yale.Panel.Mode.arm:
-								callback(
-									null,
-									HAPCharacteristic.SecuritySystemCurrentState.AWAY_ARM
-								)
-								break
-							case Yale.Panel.Mode.disarm:
-								callback(
-									null,
-									HAPCharacteristic.SecuritySystemCurrentState.DISARMED
-								)
-								break
-							case Yale.Panel.Mode.home:
-								// HomeKit also exposes STAY_ARM. Yale doesn't distinguish between the concepts of "STAY_ARM" and "NIGHT_ARM"
-								// So we just arbitrarily always choose to map "home" <-> NIGHT_ARM.
-								callback(
-									null,
-									HAPCharacteristic.SecuritySystemCurrentState.NIGHT_ARM
-								)
-								break
-						}
+						callback(null, modeToCurrentState(mode))
 					}
 				)
 
-			service
-				.getCharacteristic(HAPCharacteristic.SecuritySystemTargetState)
+			securitySystem
+				.getCharacteristic(Characteristic.SecuritySystemTargetState)
 				?.on(
 					CharacteristicEventTypes.GET,
 					async (
@@ -187,28 +214,7 @@ class YaleSyncPlatform {
 							this.password
 						)
 						const mode = await Yale.Panel.getMode(accessToken)
-						switch (mode) {
-							case Yale.Panel.Mode.arm:
-								callback(
-									null,
-									HAPCharacteristic.SecuritySystemCurrentState.AWAY_ARM
-								)
-								break
-							case Yale.Panel.Mode.disarm:
-								callback(
-									null,
-									HAPCharacteristic.SecuritySystemCurrentState.DISARMED
-								)
-								break
-							case Yale.Panel.Mode.home:
-								// HomeKit also exposes STAY_ARM. Yale doesn't distinguish between the concepts of "STAY_ARM" and "NIGHT_ARM"
-								// So we just arbitrarily always choose to map "home" <-> NIGHT_ARM.
-								callback(
-									null,
-									HAPCharacteristic.SecuritySystemCurrentState.NIGHT_ARM
-								)
-								break
-						}
+						callback(null, modeToCurrentState(mode))
 					}
 				)
 				?.on(
@@ -219,46 +225,18 @@ class YaleSyncPlatform {
 						context?: any,
 						connectionID?: string | undefined
 					) => {
-						let targetMode: Yale.Panel.Mode
-						if (
-							targetState ===
-							HAPCharacteristic.SecuritySystemTargetState.AWAY_ARM
-						) {
-							targetMode = Yale.Panel.Mode.arm
-						} else if (
-							targetState === HAPCharacteristic.SecuritySystemTargetState.DISARM
-						) {
-							targetMode = Yale.Panel.Mode.disarm
-						} else {
-							// .STAY_ARM || .NIGHT_ARM
-							targetMode = Yale.Panel.Mode.home
-						}
 						const accessToken = await Yale.authenticate(
 							this.username,
 							this.password
 						)
 						const currentMode = await Yale.Panel.setMode(
 							accessToken,
-							targetMode
+							targetStateToMode(targetState)
 						)
-						let currentState: any
-						switch (currentMode) {
-							case Yale.Panel.Mode.arm:
-								currentState =
-									HAPCharacteristic.SecuritySystemCurrentState.AWAY_ARM
-								break
-							case Yale.Panel.Mode.disarm:
-								currentState =
-									HAPCharacteristic.SecuritySystemCurrentState.DISARMED
-								break
-							case Yale.Panel.Mode.home:
-								currentState =
-									HAPCharacteristic.SecuritySystemCurrentState.NIGHT_ARM
-								break
-						}
-						service.setCharacteristic(
-							HAPCharacteristic.SecuritySystemCurrentState,
-							currentState
+						const mode = await Yale.Panel.getMode(accessToken)
+						securitySystem.setCharacteristic(
+							Characteristic.SecuritySystemCurrentState,
+							modeToCurrentState(mode)
 						)
 						callback(null)
 						// TODO: logging
