@@ -26,9 +26,24 @@
     SOFTWARE.
 */
 
+import { Decoder, object, string } from 'type-safe-json-decoder'
+
 export interface YaleSyncPlatformConfig {
 	platform: string
 	alarmName: string
 	username: string
 	password: string
 }
+
+export const platformConfigDecoder: Decoder<YaleSyncPlatformConfig> = object(
+	['platform', string()],
+	['alarmName', string()],
+	['username', string()],
+	['password', string()],
+	(platform, alarmName, username, password) => ({
+		platform,
+		alarmName,
+		username,
+		password,
+	})
+)

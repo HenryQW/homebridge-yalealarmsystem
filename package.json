@@ -38,6 +38,7 @@
 	},
 	"dependencies": {
 		"hap-nodejs": "^0.5.6",
+		"type-safe-json-decoder": "^0.2.0",
 		"yalesyncalarm": "^1.0.1"
 	},
 	"devDependencies": {
