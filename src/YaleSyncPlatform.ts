@@ -298,6 +298,8 @@ class YaleSyncPlatform {
 					}
 				)
 		}
+		accessory.updateReachability(true)
+		this._accessories[accessory.UUID] = accessory
 	}
 
 	configureContactSensor(accessory: any) {
@@ -365,6 +367,8 @@ class YaleSyncPlatform {
 					}
 				)
 		}
+		accessory.updateReachability(true)
+		this._accessories[accessory.UUID] = accessory
 	}
 
 	configurePanel(accessory: any) {
