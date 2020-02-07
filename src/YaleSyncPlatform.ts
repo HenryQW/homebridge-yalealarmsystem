@@ -4,7 +4,7 @@
     https://github.com/jonathandann/homebridge-yalesyncalarm
     Copyright (c) 2019 Jonathan Dann
 
-		Forked from https://github.com/jonathan-fielding/yalealarmsystem
+	Forked from https://github.com/jonathan-fielding/yalealarmsystem
     Copyright 2019 Jonathan Fielding, Jack Mellor & Adam Green
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -47,6 +47,7 @@ import {
 } from 'hap-nodejs/dist/lib/gen/HomeKit'
 import { Logger, LogLevel } from 'yalesyncalarm/dist/Logger'
 import { ContactSensor, MotionSensor, Panel } from 'yalesyncalarm/dist/Model'
+import wait from './Wait'
 
 // All of these are redeclared, and then reassigned below so we can elide the require('hap-nodejs').
 // This means hap-nodejs can just be a development dependency and we can reduce the package size.
@@ -59,7 +60,7 @@ let Categories: typeof HAPAccessoryCategory
 let PlatformAccessory: any
 
 let pluginName = 'homebridge-yalesyncalarm'
-let platformName = 'YaleSync'
+let platformName = 'YaleSyncAlarm'
 
 export default function(homebridge: any) {
 	Service = homebridge.hap.Service
@@ -121,10 +122,69 @@ class YaleSyncPlatform {
 			)
 			this._api.on('didFinishLaunching', async () => {
 				await this.onDidFinishLaunching()
+				const refreshInterval = platformConfig.refreshInterval
+				if (refreshInterval < 1) {
+					this._log(
+						`Refresh interval is ${refreshInterval} seconds, starting periodic updates`
+					)
+					this.heartbeat(refreshInterval)
+				} else {
+					this._log(`Refresh interval is < 1 second, periodic updates disabled`)
+				}
 			})
 		} catch (error) {
 			this._log((error as Error).message)
 		}
+	}
+
+	async heartbeat(interval: number) {
+		if (this._yale === undefined) {
+			return
+		}
+		await wait(interval * 1000)
+		await this._yale.update()
+		const [panel, motionSensors, contactSensors] = await Promise.all([
+			await this._yale.panel(),
+			await this._yale.motionSensors(),
+			await this._yale.contactSensors(),
+		])
+		for (let [uuid, accessory] of Object.entries(this._accessories)) {
+			if (accessory.context.kind === 'panel' && panel !== undefined) {
+				if (accessory.identifier == panel.identifier) {
+					accessory
+						.getService(Service.SecuritySystem)
+						.getCharacteristic(Characteristic.SecuritySystemCurrentState)
+						?.setValue(modeToCurrentState(panel.state), undefined, 'no_recurse')
+				}
+			} else if (accessory.context.kind === 'motionSensor') {
+				const motionSensor = motionSensors[accessory.context.identifier]
+				if (motionSensor) {
+					accessory
+						.getService(Service.MotionSensor)
+						.getCharacteristic(Characteristic.MotionDetected)
+						?.setValue(
+							motionSensor.state == MotionSensor.State.Triggered ? true : false,
+							undefined,
+							'no_recurse'
+						)
+				}
+			} else if (accessory.context.kind === 'contactSensor') {
+				const contactSensor = contactSensors[accessory.context.identifier]
+				if (contactSensor) {
+					accessory
+						.getService(Service.ContactSensor)
+						.getCharacteristic(Characteristic.ContactSensorState)
+						?.setValue(
+							contactSensor.state == ContactSensor.State.Closed
+								? ContactSensorState.CONTACT_DETECTED
+								: ContactSensorState.CONTACT_NOT_DETECTED,
+							undefined,
+							'no_recurse'
+						)
+				}
+			}
+		}
+		this.heartbeat(interval)
 	}
 
 	// Called when homebridge has finished loading cached accessories.
@@ -255,11 +315,11 @@ class YaleSyncPlatform {
 					Characteristic.SerialNumber,
 					accessory.context.identifier
 				)
-			const contactSensor: HAPMotionSensor =
+			const sensorService: HAPMotionSensor =
 				accessory.getService(Service.MotionSensor) !== undefined
 					? accessory.getService(Service.MotionSensor)
 					: accessory.addService(Service.MotionSensor)
-			contactSensor
+			sensorService
 				.getCharacteristic(Characteristic.MotionDetected)
 				?.on(
 					'get' as any,
@@ -275,7 +335,7 @@ class YaleSyncPlatform {
 						const motionSensors = await this._yale.motionSensors()
 						const motionSensor = motionSensors[accessory.context.identifier]
 						if (motionSensor !== undefined) {
-							const updated = await this._yale?.updateMotionSensor(motionSensor)
+							const updated = await this._yale.updateMotionSensor(motionSensor)
 							if (updated !== undefined) {
 								callback(
 									null,
@@ -320,11 +380,11 @@ class YaleSyncPlatform {
 					Characteristic.SerialNumber,
 					accessory.context.identifier
 				)
-			const contactSensor: HAPContactSensor =
+			const sensorService: HAPContactSensor =
 				accessory.getService(Service.ContactSensor) !== undefined
 					? accessory.getService(Service.ContactSensor)
 					: accessory.addService(Service.ContactSensor)
-			contactSensor
+			sensorService
 				.getCharacteristic(Characteristic.ContactSensorState)
 				?.on(
 					'get' as any,
@@ -340,7 +400,7 @@ class YaleSyncPlatform {
 						const contactSensors = await this._yale.contactSensors()
 						const contactSensor = contactSensors[accessory.context.identifier]
 						if (contactSensor !== undefined) {
-							const updated = await this._yale?.updateContactSensor(
+							const updated = await this._yale.updateContactSensor(
 								contactSensor
 							)
 							if (updated !== undefined) {
@@ -444,14 +504,16 @@ class YaleSyncPlatform {
 							callback(new Error(`${pluginName} incorrectly configured`))
 							return
 						}
-						const mode = await this._yale.setPanelState(
-							targetStateToMode(targetState)
-						)
-						securitySystem.setCharacteristic(
-							Characteristic.SecuritySystemCurrentState,
-							modeToCurrentState(mode)
-						)
-						callback(null)
+						if (context !== 'no_recurse') {
+							const mode = await this._yale.setPanelState(
+								targetStateToMode(targetState)
+							)
+							securitySystem.setCharacteristic(
+								Characteristic.SecuritySystemCurrentState,
+								modeToCurrentState(mode)
+							)
+							callback(null)
+						}
 					}
 				)
 			accessory.updateReachability(true)

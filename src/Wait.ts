@@ -4,9 +4,6 @@
     https://github.com/jonathandann/homebridge-yalesyncalarm
     Copyright (c) 2019 Jonathan Dann
 
-		Forked from https://github.com/jonathan-fielding/yalealarmsystem
-    Copyright 2019 Jonathan Fielding, Jack Mellor & Adam Green
-
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
     in the Software without restriction, including without limitation the rights
@@ -26,31 +23,8 @@
     SOFTWARE.
 */
 
-import {
-	Decoder,
-	object,
-	string,
-	number,
-	oneOf,
-	succeed,
-} from 'type-safe-json-decoder'
-
-export interface YaleSyncPlatformConfig {
-	name: string
-	username: string
-	password: string
-	refreshInterval: number // The number in seconds, values < 1 will disable refresh
-}
-
-export const platformConfigDecoder: Decoder<YaleSyncPlatformConfig> = object(
-	['name', string()],
-	['username', string()],
-	['password', string()],
-	['refreshInterval', number()],
-	(name, username, password, refreshInterval) => ({
-		name,
-		username,
-		password,
-		refreshInterval,
+export default async function wait(ms: number) {
+	return new Promise(resolve => {
+		setTimeout(resolve, ms)
 	})
-)
+}
