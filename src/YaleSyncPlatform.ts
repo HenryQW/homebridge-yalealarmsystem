@@ -176,8 +176,8 @@ class YaleSyncPlatform {
 						.getCharacteristic(Characteristic.ContactSensorState)
 						?.setValue(
 							contactSensor.state == ContactSensor.State.Closed
-								? ContactSensorState.CONTACT_DETECTED
-								: ContactSensorState.CONTACT_NOT_DETECTED,
+								? 0 // ContactSensorState.CONTACT_DETECTED
+								: 1, // ContactSensorState.CONTACT_NOT_DETECTED
 							undefined,
 							'no_recurse'
 						)
@@ -411,8 +411,8 @@ class YaleSyncPlatform {
 								callback(
 									null,
 									updated.state == ContactSensor.State.Closed
-										? ContactSensorState.CONTACT_DETECTED
-										: ContactSensorState.CONTACT_NOT_DETECTED
+										? 0 // ContactSensorState.CONTACT_DETECTED
+										: 1 // ContactSensorState.CONTACT_NOT_DETECTED
 								)
 							} else {
 								callback(
