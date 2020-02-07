@@ -123,7 +123,7 @@ class YaleSyncPlatform {
 			this._api.on('didFinishLaunching', async () => {
 				await this.onDidFinishLaunching()
 				const refreshInterval = platformConfig.refreshInterval
-				if (refreshInterval < 1) {
+				if (refreshInterval >= 1) {
 					this._log(
 						`Refresh interval is ${refreshInterval} seconds, starting periodic updates`
 					)
