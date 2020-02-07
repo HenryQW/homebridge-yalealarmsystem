@@ -1,35 +1,50 @@
-# homebridge-yalealarmsystem
+# homebridge-yalesyncalarm - Homebridge support for Yale Sync Alarms
 
-The main function of the Homebridge plugin is to proxy HomeKit queries to the API that the Yale Burglar Alarm uses. 
+![npm](https://img.shields.io/npm/v/homebridge-yalesyncalarm)
+[![Known Vulnerabilities](https://snyk.io//test/github/jonathandann/homebridge-yalesyncalarm/badge.svg?targetFile=package.json)](https://snyk.io//test/github/jonathandann/homebridge-yalesyncalarm/badge.svg?targetFile=package.json)
+[![npm](https://img.shields.io/npm/l/blink.svg 'license')](https://github.com/jonathandann/homebridge-yalesyncalarm/blob/master/LICENSE)
 
-## Installation
+Homebridge plugin for the [Yale Sync Smart Home Alarm](https://www.yale.co.uk/en/yale/couk/products/smart-living/smart-home-alarms/sync-smart-alarm/) and [Yale Smart Home Alarm](https://www.yale.co.uk/en/yale/couk/products/smart-living/smart-home-alarms/smart-home-alarm-starter-kit/).
 
-1. Install homebridge using: npm install -g homebridge
-1. Install homebridge-yalealarmsystem using: npm install -g homebridge-yalealarmsystem
-1. Update your configuration file. See sample-config.json in this repository for a sample.
+# Features
+
+- Exposes the alarm system as a Home.app secuirty system. You can set it to "Home", "Away", "Night" and "Off" modes. Yale alarms only have 3 modes. So both "Home" and "Night" will "part-arm" the system.
+- Contact and motion sensors are exposed in Home.app
+
+# Please Note
+
+There's currently no way to hook into Yale's push service. It's not possible to get truly realtime updates.
+
+The `refreshInterval` parameter in config.json is experimental. It causes the plugin to call the Yale API every `refreshInterval` seconds to get the current state of the alarm and sensors.
+
+If you set `refreshInterval` to a value less than `1`. The automatic update is disabled. In this case switching away from, and back to Home.app will refresh the state of the system in Home.app.
+
+# Installation
+
+`npm install -g homebridge-blink`
 
 ## Configuration
 
-The module simply requires you to specify the username and password you use to authenticate with your burglar alarm system.
-
-```
-"accessories": [
+```json
+"platforms": [
     {
-        "accessory": "YaleAlarm",
-        "name": "Yale Alarm",
-        "username": "username",
-        "password": "password"
+        "platform": "YaleSyncAlarm",
+        "name": "Burglar Alarm",
+        "username": "username@mail.com",
+        "password": "password",
+        "refreshInterval": 10
     }
 ]
 ```
 
-## License
-Copyright 2017 Jonathan Fielding
+# Building from Source
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+```bash
+git clone https://github.com/jonathandann/homebridge-yalesyncalarm.git && cd homebridge-yalesyncalarm && npm install
+```
 
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+After running `npm install`, `npm` should automatically run `npm run build`, which runs `node_modules/typescript/bin/tsc` to compile the typescript files. If it doesn't then you can run either `node_modules/typescript/bin/tsc` or `npm run build`.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+There are useful configs already included for [prettier](https://prettier.io) and [Visual Studio Code](https://code.visualstudio.com).
 
-License: MIT (http://www.opensource.org/licenses/mit-license.php)
+Visual Studio Code is configured to use the version of typescript installed as a development dependency in the npm package.
