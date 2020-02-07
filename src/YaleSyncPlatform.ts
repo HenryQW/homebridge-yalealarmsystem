@@ -26,23 +26,27 @@
     SOFTWARE.
 */
 
-import * as Yale from 'yalesyncalarm'
+import { Yale } from 'yalesyncalarm'
 import {
 	Service as HAPService,
 	Categories as HAPAccessoryCategory,
 	Characteristic as HAPCharacteristic,
 	uuid,
-	CharacteristicEventTypes as HAPCharacteristicEventTypes,
 	CharacteristicValue,
 	CharacteristicGetCallback,
 	CharacteristicSetCallback,
 	Nullable,
 } from 'hap-nodejs'
-import { YaleSyncPlatformConfig } from './YaleSyncPlatformConfig'
+import { platformConfigDecoder } from './YaleSyncPlatformConfig'
 import {
+	ContactSensor as HAPContactSensor,
+	MotionSensor as HAPMotionSensor,
 	SecuritySystem,
 	AccessoryInformation,
+	ContactSensorState,
 } from 'hap-nodejs/dist/lib/gen/HomeKit'
+import { Logger, LogLevel } from 'yalesyncalarm/dist/Logger'
+import { ContactSensor, MotionSensor, Panel } from 'yalesyncalarm/dist/Model'
 
 // All of these are redeclared, and then reassigned below so we can elide the require('hap-nodejs').
 // This means hap-nodejs can just be a development dependency and we can reduce the package size.
@@ -50,7 +54,6 @@ import {
 let Service: typeof HAPService
 let Characteristic: typeof HAPCharacteristic
 let UUIDGenerator: typeof uuid
-let CharacteristicEventTypes: typeof HAPCharacteristicEventTypes
 let Categories: typeof HAPAccessoryCategory
 
 let PlatformAccessory: any
@@ -62,8 +65,7 @@ export default function(homebridge: any) {
 	Service = homebridge.hap.Service
 	Characteristic = homebridge.hap.Characteristic
 	UUIDGenerator = homebridge.hap.uuid
-	CharacteristicEventTypes = homebridge.hap.CharacteristicEventTypes
-	Categories = homebridge.hap.Categories
+	Categories = homebridge.hap.Accessory.Categories
 
 	PlatformAccessory = homebridge.platformAccessory
 
@@ -75,90 +77,302 @@ export default function(homebridge: any) {
 	)
 }
 
-// TODO: Handle ".ALARM_TRIGGERED"
-function modeToCurrentState(mode: Yale.Panel.Mode) {
+function modeToCurrentState(mode: Panel.State) {
 	switch (mode) {
-		case Yale.Panel.Mode.arm:
+		case Panel.State.Armed:
 			return Characteristic.SecuritySystemCurrentState.AWAY_ARM
-		case Yale.Panel.Mode.disarm:
+		case Panel.State.Disarmed:
 			return Characteristic.SecuritySystemCurrentState.DISARMED
-		case Yale.Panel.Mode.home:
+		case Panel.State.Home:
 			// HomeKit also exposes STAY_ARM. Yale doesn't distinguish between the concepts of "STAY_ARM" and "NIGHT_ARM"
-			// So we just arbitrarily always choose to map "home" <-> NIGHT_ARM.
+			// So we just arbitrarily always choose to map "home" <> NIGHT_ARM.
 			return Characteristic.SecuritySystemCurrentState.NIGHT_ARM
 	}
 }
 
-function targetStateToMode(targetState: CharacteristicValue): Yale.Panel.Mode {
+function targetStateToMode(targetState: CharacteristicValue): Panel.State {
 	if (targetState === Characteristic.SecuritySystemTargetState.AWAY_ARM) {
-		return Yale.Panel.Mode.arm
+		return Panel.State.Armed
 	} else if (targetState === Characteristic.SecuritySystemTargetState.DISARM) {
-		return Yale.Panel.Mode.disarm
+		return Panel.State.Disarmed
 	} else {
 		// .STAY_ARM || .NIGHT_ARM
-		return Yale.Panel.Mode.home
+		return Panel.State.Home
 	}
 }
 
 class YaleSyncPlatform {
-	// Passed in via constructor
-	log: any
-	api: any
+	private _yale?: Yale
+	private _accessories: { [key: string]: any } = {}
 
-	//yale: Yale
-	accessories: { [key: string]: any } = {}
-
-	username: string
-	password: string
-	alarmName: string
-
-	constructor(log: any, config: YaleSyncPlatformConfig, api: any) {
-		//		this.yale = new Yale(config.username, config.password)
-		// TODO: assert config has correct values.
-		this.username = config.username
-		this.password = config.password
-		this.alarmName = config.alarmName
-		this.log = log
-		this.api = api
-		this.api.on('didFinishLaunching', async () => {
-			await this.onDidFinishLaunching()
-		})
+	constructor(
+		private readonly _log: any,
+		config: any,
+		private readonly _api: any
+	) {
+		// Validate the config, if we're not correctly configured, the rest of the plugin
+		// fails gracefully instead of crashing homebridge.
+		try {
+			const platformConfig = platformConfigDecoder.decodeAny(config)
+			this._yale = new Yale(
+				platformConfig.username,
+				platformConfig.password,
+				new Logger(LogLevel.Info | LogLevel.Error, this._log)
+			)
+			this._api.on('didFinishLaunching', async () => {
+				await this.onDidFinishLaunching()
+			})
+		} catch (error) {
+			this._log((error as Error).message)
+		}
 	}
 
 	// Called when homebridge has finished loading cached accessories.
 	// We need to register new ones and unregister ones that are no longer reachable.
 	async onDidFinishLaunching() {
-		this.log('Searching for devices')
-		//		await this.yale.update()
-		const uuid = UUIDGenerator.generate(
-			`${pluginName}.${platformName}.panel.${this.username}`
-		)
-		if (this.accessories[uuid] === undefined) {
-			const accessory = new PlatformAccessory(
-				this.alarmName,
-				uuid,
-				Categories.SECURITY_SYSTEM
+		if (this._yale === undefined) {
+			// Incorrectly configured plugin.
+			return
+		}
+		this._log('Searching for devices')
+		await this._yale.update()
+
+		const panel = await this._yale.panel()
+		if (panel !== undefined) {
+			this._log(`Discovered panel: ${panel.identifier}`)
+			const uuid = UUIDGenerator.generate(
+				`${pluginName}.${platformName}.panel.${panel.identifier}`
 			)
-			accessory.context.identifier = this.username
-			this.configurePanel(accessory)
-			this.log(`Registering alarm panel: ${this.alarmName}`)
-			this.api.registerPlatformAccessories(pluginName, platformName, [
-				accessory,
-			])
+			if (this._accessories[uuid] === undefined) {
+				const accessory = new PlatformAccessory(
+					'Alarm System',
+					uuid,
+					Categories.SECURITY_SYSTEM
+				)
+				accessory.context.identifier = panel.identifier
+				accessory.context.kind = 'panel'
+				this.configurePanel(accessory)
+				this._log(`Registering alarm panel: ${panel.identifier}`)
+				this._api.registerPlatformAccessories(pluginName, platformName, [
+					accessory,
+				])
+			} else {
+				this._log(
+					`Panel: ${panel.identifier} already registered with Homebridge`
+				)
+			}
+		}
+
+		const motionSensors = await this._yale.motionSensors()
+		for (let [identifier, motionSensor] of Object.entries(motionSensors)) {
+			this._log(`Discovered moton sensor: ${motionSensor.name}`)
+			const uuid = UUIDGenerator.generate(
+				`${pluginName}.${platformName}.motionSensor.${identifier}`
+			)
+			if (this._accessories[uuid] === undefined) {
+				const accessory = new PlatformAccessory(
+					motionSensor.name,
+					uuid,
+					Categories.SENSOR
+				)
+				accessory.context.identifier = identifier
+				accessory.context.kind = 'motionSensor'
+				this.configureMotionSensor(accessory)
+				this._log(
+					`Registering motion sensor: ${motionSensor.name} ${motionSensor.identifier}`
+				)
+				this._api.registerPlatformAccessories(pluginName, platformName, [
+					accessory,
+				])
+			} else {
+				this._log(
+					`Motion sensor: ${motionSensor.name} ${motionSensor.identifier} already registered with Homebridge`
+				)
+			}
+		}
+
+		const contactSensors = await this._yale.contactSensors()
+		for (let [identifier, contactSensor] of Object.entries(contactSensors)) {
+			this._log(`Discovered moton sensor: ${contactSensor.name}`)
+			const uuid = UUIDGenerator.generate(
+				`${pluginName}.${platformName}.contactSensor.${identifier}`
+			)
+			if (this._accessories[uuid] === undefined) {
+				const accessory = new PlatformAccessory(
+					contactSensor.name,
+					uuid,
+					Categories.SENSOR
+				)
+				accessory.context.identifier = identifier
+				accessory.context.kind = 'contactSensor'
+				this.configureContactSensor(accessory)
+				this._log(
+					`Registering contact sensor: ${contactSensor.name} ${contactSensor.identifier}`
+				)
+				this._api.registerPlatformAccessories(pluginName, platformName, [
+					accessory,
+				])
+			} else {
+				this._log(
+					`Contact sensor: ${contactSensor.name} ${contactSensor.identifier} already registered with Homebridge`
+				)
+			}
 		}
 	}
 
 	// Called when homebridge restores a cached accessory.
 	configureAccessory(accessory: any) {
-		if (this.accessories[accessory.UUID] === undefined) {
-			if (accessory.context.identifier == this.username) {
+		if (this._yale === undefined) {
+			// Incorrectly configured plugin.
+			return
+		}
+		if (this._accessories[accessory.UUID] === undefined) {
+			if (accessory.context.kind === 'panel') {
 				this.configurePanel(accessory)
+			} else if (accessory.context.kind === 'motionSensor') {
+				this.configureMotionSensor(accessory)
+			} else if (accessory.context.kind === 'contactSensor') {
+				this.configureContactSensor(accessory)
 			}
 		}
 	}
 
+	configureMotionSensor(accessory: any) {
+		if (this._yale === undefined) {
+			// Incorrectly configured plugin.
+			return
+		}
+		if (this._accessories[accessory.UUID] === undefined) {
+			// Homebridge adds this service by default to all instances of PlatformAccessory
+			const informationService: AccessoryInformation = accessory.getService(
+				Service.AccessoryInformation
+			)
+			informationService
+				.setCharacteristic(Characteristic.Name, accessory.displayName)
+				.setCharacteristic(Characteristic.Manufacturer, 'Yale')
+				.setCharacteristic(Characteristic.Model, 'Motion Sensor')
+				.setCharacteristic(
+					Characteristic.SerialNumber,
+					accessory.context.identifier
+				)
+			const contactSensor: HAPMotionSensor =
+				accessory.getService(Service.MotionSensor) !== undefined
+					? accessory.getService(Service.MotionSensor)
+					: accessory.addService(Service.MotionSensor)
+			contactSensor
+				.getCharacteristic(Characteristic.MotionDetected)
+				?.on(
+					'get' as any,
+					async (
+						callback: CharacteristicGetCallback<Nullable<CharacteristicValue>>,
+						context?: any,
+						connectionID?: string | undefined
+					) => {
+						if (this._yale === undefined) {
+							callback(new Error(`${pluginName} incorrectly configured`))
+							return
+						}
+						const motionSensors = await this._yale.motionSensors()
+						const motionSensor = motionSensors[accessory.context.identifier]
+						if (motionSensor !== undefined) {
+							const updated = await this._yale?.updateMotionSensor(motionSensor)
+							if (updated !== undefined) {
+								callback(
+									null,
+									updated.state == MotionSensor.State.Triggered ? true : false
+								)
+							} else {
+								callback(
+									new Error(
+										`Failed to get status of motion sensor: ${motionSensor.name} ${motionSensor.identifier}`
+									)
+								)
+							}
+						} else {
+							callback(
+								new Error(
+									`Motion sensor: ${accessory.context.identifier} not found`
+								)
+							)
+						}
+					}
+				)
+		}
+	}
+
+	configureContactSensor(accessory: any) {
+		if (this._yale === undefined) {
+			// Incorrectly configured plugin.
+			return
+		}
+		if (this._accessories[accessory.UUID] === undefined) {
+			// Homebridge adds this service by default to all instances of PlatformAccessory
+			const informationService: AccessoryInformation = accessory.getService(
+				Service.AccessoryInformation
+			)
+			informationService
+				.setCharacteristic(Characteristic.Name, accessory.displayName)
+				.setCharacteristic(Characteristic.Manufacturer, 'Yale')
+				.setCharacteristic(Characteristic.Model, 'Contact Sensor')
+				.setCharacteristic(
+					Characteristic.SerialNumber,
+					accessory.context.identifier
+				)
+			const contactSensor: HAPContactSensor =
+				accessory.getService(Service.ContactSensor) !== undefined
+					? accessory.getService(Service.ContactSensor)
+					: accessory.addService(Service.ContactSensor)
+			contactSensor
+				.getCharacteristic(Characteristic.ContactSensorState)
+				?.on(
+					'get' as any,
+					async (
+						callback: CharacteristicGetCallback<Nullable<CharacteristicValue>>,
+						context?: any,
+						connectionID?: string | undefined
+					) => {
+						if (this._yale === undefined) {
+							callback(new Error(`${pluginName} incorrectly configured`))
+							return
+						}
+						const contactSensors = await this._yale.contactSensors()
+						const contactSensor = contactSensors[accessory.context.identifier]
+						if (contactSensor !== undefined) {
+							const updated = await this._yale?.updateContactSensor(
+								contactSensor
+							)
+							if (updated !== undefined) {
+								callback(
+									null,
+									updated.state == ContactSensor.State.Closed
+										? ContactSensorState.CONTACT_DETECTED
+										: ContactSensorState.CONTACT_NOT_DETECTED
+								)
+							} else {
+								callback(
+									new Error(
+										`Failed to get status of contact sensor: ${contactSensor.name} ${contactSensor.identifier}`
+									)
+								)
+							}
+						} else {
+							callback(
+								new Error(
+									`Contact sensor: ${accessory.context.identifier} not found`
+								)
+							)
+						}
+					}
+				)
+		}
+	}
+
 	configurePanel(accessory: any) {
-		if (this.accessories[accessory.UUID] === undefined) {
+		if (this._yale === undefined) {
+			// Incorrectly configured plugin.
+			return
+		}
+		if (this._accessories[accessory.UUID] === undefined) {
 			// Homebridge adds this service by default to all instances of PlatformAccessory
 			const informationService: AccessoryInformation = accessory.getService(
 				Service.AccessoryInformation
@@ -179,71 +393,65 @@ class YaleSyncPlatform {
 			securitySystem
 				.getCharacteristic(Characteristic.SecuritySystemCurrentState)
 				?.on(
-					CharacteristicEventTypes.GET,
+					'get' as any,
 					async (
 						callback: CharacteristicGetCallback<Nullable<CharacteristicValue>>,
 						context?: any,
 						connectionID?: string | undefined
 					) => {
-						// TODO: catch errors
-						// TODO: remove duplication in target state getter
-						// TODO: logging
-						const accessToken = await Yale.authenticate(
-							this.username,
-							this.password
-						)
-						const mode = await Yale.Panel.getMode(accessToken)
-						callback(null, modeToCurrentState(mode))
+						if (this._yale === undefined) {
+							// Incorrectly configured plugin.
+							callback(new Error(`${pluginName} incorrectly configured`))
+							return
+						}
+						let panelState = await this._yale.getPanelState()
+						callback(null, modeToCurrentState(panelState))
 					}
 				)
 
 			securitySystem
 				.getCharacteristic(Characteristic.SecuritySystemTargetState)
 				?.on(
-					CharacteristicEventTypes.GET,
+					'get' as any,
 					async (
 						callback: CharacteristicGetCallback<Nullable<CharacteristicValue>>,
 						context?: any,
 						connectionID?: string | undefined
 					) => {
-						// TODO: catch errors
-						// TODO: remove duplication in target state getter
-						// TODO: logging
-						const accessToken = await Yale.authenticate(
-							this.username,
-							this.password
-						)
-						const mode = await Yale.Panel.getMode(accessToken)
-						callback(null, modeToCurrentState(mode))
+						if (this._yale === undefined) {
+							// Incorrectly configured plugin.
+							callback(new Error(`${pluginName} incorrectly configured`))
+							return
+						}
+						let panelState = await this._yale.getPanelState()
+						callback(null, modeToCurrentState(panelState))
 					}
 				)
 				?.on(
-					CharacteristicEventTypes.SET,
+					'set' as any,
 					async (
 						targetState: CharacteristicValue,
 						callback: CharacteristicSetCallback,
 						context?: any,
 						connectionID?: string | undefined
 					) => {
-						const accessToken = await Yale.authenticate(
-							this.username,
-							this.password
-						)
-						const currentMode = await Yale.Panel.setMode(
-							accessToken,
+						if (this._yale === undefined) {
+							// Incorrectly configured plugin.
+							callback(new Error(`${pluginName} incorrectly configured`))
+							return
+						}
+						const mode = await this._yale.setPanelState(
 							targetStateToMode(targetState)
 						)
-						const mode = await Yale.Panel.getMode(accessToken)
 						securitySystem.setCharacteristic(
 							Characteristic.SecuritySystemCurrentState,
 							modeToCurrentState(mode)
 						)
 						callback(null)
-						// TODO: logging
-						// TODO: error handling
 					}
 				)
 			accessory.updateReachability(true)
+			this._accessories[accessory.UUID] = accessory
 		}
 	}
 }

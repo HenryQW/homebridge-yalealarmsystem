@@ -2,7 +2,7 @@
 	"name": "homebridge-yalesyncalarm",
 	"version": "1.1.0",
 	"description": "Homebridge plugin for the Yale Sync Alarm",
-	"main": ".dist/YaleSyncPlatform.js",
+	"main": "./dist/YaleSyncPlatform.js",
 	"types": "./dist/YaleSyncPlatform.d.ts",
 	"files": [
 		"/dist/**/*",
@@ -37,11 +37,11 @@
 		"homebridge": ">=0.4.5"
 	},
 	"dependencies": {
-		"hap-nodejs": "^0.5.6",
 		"type-safe-json-decoder": "^0.2.0",
-		"yalesyncalarm": "^1.0.1"
+		"yalesyncalarm": "^2.0.0"
 	},
 	"devDependencies": {
+		"hap-nodejs": "^0.5.6",
 		"prettier": "^1.19.1",
 		"typescript": "^3.7.5"
 	}
