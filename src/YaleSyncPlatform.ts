@@ -225,7 +225,9 @@ class YaleSyncPlatform {
 
 		const motionSensors = await this._yale.motionSensors()
 		for (let [identifier, motionSensor] of Object.entries(motionSensors)) {
-			this._log(`Discovered moton sensor: ${motionSensor.name}`)
+			this._log(
+				`Discovered moton sensor: ${motionSensor.name}, ${motionSensor.identifier}`
+			)
 			const uuid = UUIDGenerator.generate(
 				`${pluginName}.${platformName}.motionSensor.${identifier}`
 			)
@@ -253,7 +255,9 @@ class YaleSyncPlatform {
 
 		const contactSensors = await this._yale.contactSensors()
 		for (let [identifier, contactSensor] of Object.entries(contactSensors)) {
-			this._log(`Discovered moton sensor: ${contactSensor.name}`)
+			this._log(
+				`Discovered moton sensor: ${contactSensor.name} ${contactSensor.identifier}`
+			)
 			const uuid = UUIDGenerator.generate(
 				`${pluginName}.${platformName}.contactSensor.${identifier}`
 			)
