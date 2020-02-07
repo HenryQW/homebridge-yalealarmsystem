@@ -8,7 +8,7 @@ Homebridge plugin for the [Yale Sync Smart Home Alarm](https://www.yale.co.uk/en
 
 # Features
 
-- Exposes the alarm system as a Home.app secuirty system. You can set it to "Home", "Away", "Night" and "Off" modes. Yale alarms only have 3 modes. So both "Home" and "Night" will "part-arm" the system.
+- Exposes the alarm system as a Home.app security system. You can set it to "Home", "Away", "Night" and "Off" modes. Yale alarms only have 3 modes. So both "Home" and "Night" will "part-arm" the system.
 - Contact and motion sensors are exposed in Home.app
 
 # Please Note
