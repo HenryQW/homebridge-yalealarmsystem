@@ -91,6 +91,34 @@ function modeToCurrentState(mode: Panel.State) {
 	}
 }
 
+function targetStateToString(state: CharacteristicValue) {
+	if (state === Characteristic.SecuritySystemTargetState.STAY_ARM) {
+		return 'home'
+	} else if (state === Characteristic.SecuritySystemTargetState.AWAY_ARM) {
+		return 'away'
+	} else if (state === Characteristic.SecuritySystemTargetState.NIGHT_ARM) {
+		return 'night'
+	} else if (state === Characteristic.SecuritySystemTargetState.DISARM) {
+		return 'off'
+	}
+}
+
+function currentStateToString(state: CharacteristicValue) {
+	if (state === Characteristic.SecuritySystemCurrentState.STAY_ARM) {
+		return 'home'
+	} else if (state === Characteristic.SecuritySystemCurrentState.AWAY_ARM) {
+		return 'away'
+	} else if (state === Characteristic.SecuritySystemCurrentState.NIGHT_ARM) {
+		return 'night'
+	} else if (state === Characteristic.SecuritySystemCurrentState.DISARMED) {
+		return 'off'
+	} else if (
+		state === Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED
+	) {
+		return 'triggered'
+	}
+}
+
 function targetStateToMode(targetState: CharacteristicValue): Panel.State {
 	if (targetState === Characteristic.SecuritySystemTargetState.AWAY_ARM) {
 		return Panel.State.Armed
@@ -339,8 +367,20 @@ class YaleSyncPlatform {
 						const motionSensors = await this._yale.motionSensors()
 						const motionSensor = motionSensors[accessory.context.identifier]
 						if (motionSensor !== undefined) {
+							this._log(
+								`Fetching status of motion sensor: ${motionSensor.name} ${motionSensor.identifier}`
+							)
 							const updated = await this._yale.updateMotionSensor(motionSensor)
 							if (updated !== undefined) {
+								this._log(
+									`Motion sensor: ${motionSensor.name} ${
+										motionSensor.identifier
+									}, state: ${
+										updated.state == MotionSensor.State.Triggered
+											? 'triggered'
+											: 'none detected'
+									}`
+								)
 								callback(
 									null,
 									updated.state == MotionSensor.State.Triggered ? true : false
@@ -404,10 +444,22 @@ class YaleSyncPlatform {
 						const contactSensors = await this._yale.contactSensors()
 						const contactSensor = contactSensors[accessory.context.identifier]
 						if (contactSensor !== undefined) {
+							this._log(
+								`Fetching status of contact sensor: ${contactSensor.name} ${contactSensor.identifier}`
+							)
 							const updated = await this._yale.updateContactSensor(
 								contactSensor
 							)
 							if (updated !== undefined) {
+								this._log(
+									`Contact sensor: ${contactSensor.name} ${
+										contactSensor.identifier
+									}, state: ${
+										updated.state == ContactSensor.State.Closed
+											? 'closed'
+											: 'open'
+									}`
+								)
 								callback(
 									null,
 									updated.state == ContactSensor.State.Closed
@@ -472,8 +524,15 @@ class YaleSyncPlatform {
 							callback(new Error(`${pluginName} incorrectly configured`))
 							return
 						}
-						let panelState = await this._yale.getPanelState()
-						callback(null, modeToCurrentState(panelState))
+						this._log(`Fetching panel state`)
+						let panelMode = await this._yale.getPanelState()
+						let panelState = modeToCurrentState(panelMode)
+						this._log(
+							`Panel mode: ${panelMode}, HomeKit state: ${currentStateToString(
+								panelState
+							)}`
+						)
+						callback(null, panelState)
 					}
 				)
 
@@ -511,6 +570,11 @@ class YaleSyncPlatform {
 						if (context !== 'no_recurse') {
 							const mode = await this._yale.setPanelState(
 								targetStateToMode(targetState)
+							)
+							this._log(
+								`Panel mode: ${mode}, HomeKit state: ${currentStateToString(
+									modeToCurrentState(mode)
+								)}`
 							)
 							securitySystem.setCharacteristic(
 								Characteristic.SecuritySystemCurrentState,
