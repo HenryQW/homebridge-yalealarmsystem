@@ -1,6 +1,6 @@
 {
 	"name": "@henrywang/homebridge-yalesyncalarm",
-	"version": "1.2.4",
+	"version": "1.2.5-beta.0",
 	"description": "Homebridge plugin for the Yale Sync Alarm",
 	"main": "./dist/YaleSyncPlatform.js",
 	"types": "./dist/YaleSyncPlatform.d.ts",
