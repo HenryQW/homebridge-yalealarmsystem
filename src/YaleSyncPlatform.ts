@@ -342,6 +342,9 @@ class YaleSyncPlatform {
 							this._log(
 								`Fetching status of motion sensor: ${motionSensor.name} ${motionSensor.identifier}`
 							)
+
+							callback()
+
 							const updated = await this._yale.updateMotionSensor(motionSensor)
 							if (updated !== undefined) {
 								this._log(
@@ -418,7 +421,7 @@ class YaleSyncPlatform {
 								`Fetching status of contact sensor: ${contactSensor.name} ${contactSensor.identifier}`
 							)
 
-							callback(null)
+							callback()
 
 							const updated = await this._yale.updateContactSensor(
 								contactSensor
@@ -434,8 +437,8 @@ class YaleSyncPlatform {
 
 								sensorService
 									.getCharacteristic(Characteristic.ContactSensorState)?.updateValue(updated.state == ContactSensor.State.Closed
-										? 0
-										: 1)
+										? Characteristic.ContactSensorState.CONTACT_DETECTED
+										: Characteristic.ContactSensorState.CONTACT_NOT_DETECTED)
 							} else {
 								callback(
 									new Error(
@@ -539,7 +542,7 @@ class YaleSyncPlatform {
 						}
 						if (context !== 'no_recurse') {
 
-							callback(null)
+							callback()
 
 							const mode = await this._yale.setPanelState(
 								targetStateToMode(targetState)
