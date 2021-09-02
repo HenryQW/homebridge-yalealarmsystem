@@ -1,29 +1,29 @@
 /*!
-    MIT License
+	MIT License
 
-    https://github.com/jonathandann/homebridge-yalesyncalarm
-    Copyright (c) 2019 Jonathan Dann
+	https://github.com/jonathandann/homebridge-yalesyncalarm
+	Copyright (c) 2019 Jonathan Dann
 
 	Forked from https://github.com/jonathan-fielding/yalealarmsystem
-    Copyright 2019 Jonathan Fielding, Jack Mellor & Adam Green
+	Copyright 2019 Jonathan Fielding, Jack Mellor & Adam Green
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
 */
 
 import { Yale } from 'yalesyncalarm'
@@ -62,7 +62,7 @@ let PlatformAccessory: any
 let pluginName = 'homebridge-yalesyncalarm'
 let platformName = 'YaleSyncAlarm'
 
-export default function(homebridge: any) {
+export default function (homebridge: any) {
 	Service = homebridge.hap.Service
 	Characteristic = homebridge.hap.Characteristic
 	UUIDGenerator = homebridge.hap.uuid
@@ -373,12 +373,10 @@ class YaleSyncPlatform {
 							const updated = await this._yale.updateMotionSensor(motionSensor)
 							if (updated !== undefined) {
 								this._log(
-									`Motion sensor: ${motionSensor.name} ${
-										motionSensor.identifier
-									}, state: ${
-										updated.state == MotionSensor.State.Triggered
-											? 'triggered'
-											: 'none detected'
+									`Motion sensor: ${motionSensor.name} ${motionSensor.identifier
+									}, state: ${updated.state == MotionSensor.State.Triggered
+										? 'triggered'
+										: 'none detected'
 									}`
 								)
 								callback(
@@ -452,12 +450,10 @@ class YaleSyncPlatform {
 							)
 							if (updated !== undefined) {
 								this._log(
-									`Contact sensor: ${contactSensor.name} ${
-										contactSensor.identifier
-									}, state: ${
-										updated.state == ContactSensor.State.Closed
-											? 'closed'
-											: 'open'
+									`Contact sensor: ${contactSensor.name} ${contactSensor.identifier
+									}, state: ${updated.state == ContactSensor.State.Closed
+										? 'closed'
+										: 'open'
 									}`
 								)
 								callback(
@@ -568,6 +564,7 @@ class YaleSyncPlatform {
 							return
 						}
 						if (context !== 'no_recurse') {
+							callback(null);
 							const mode = await this._yale.setPanelState(
 								targetStateToMode(targetState)
 							)
@@ -576,11 +573,10 @@ class YaleSyncPlatform {
 									modeToCurrentState(mode)
 								)}`
 							)
-							securitySystem.setCharacteristic(
-								Characteristic.SecuritySystemCurrentState,
-								modeToCurrentState(mode)
-							)
-							callback(null)
+							securitySystem.getCharacteristic(
+								Characteristic.SecuritySystemCurrentState
+							)?.updateValue(
+								modeToCurrentState(mode))
 						}
 					}
 				)
