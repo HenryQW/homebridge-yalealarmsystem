@@ -1,6 +1,6 @@
 {
 	"name": "@henrywang/homebridge-yalesyncalarm",
-	"version": "1.2.7-beta.0",
+	"version": "1.2.8",
 	"description": "Homebridge plugin for the Yale Sync Alarm",
 	"main": "./dist/YaleSyncPlatform.js",
 	"types": "./dist/YaleSyncPlatform.d.ts",
@@ -18,7 +18,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/HenryQW/homebridge-yalesyncalarm.git"
+		"url": "git+https://github.com/HenryQW/homebridge-yalealarmsystem.git"
 	},
 	"keywords": [
 		"homebridge",
@@ -30,9 +30,9 @@
 	"author": "HenryQW",
 	"license": "MIT",
 	"bugs": {
-		"url": "https://github.com/HenryQW/homebridge-yalesyncalarm/issues"
+		"url": "https://github.com/HenryQW/homebridge-yalealarmsystem/issues"
 	},
-	"homepage": "https://github.com/HenryQW/homebridge-yalesyncalarm#readme",
+	"homepage": "https://github.com/HenryQW/homebridge-yalealarmsystem#readme",
 	"engines": {
 		"homebridge": ">=1.3.0"
 	},

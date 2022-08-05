@@ -66,17 +66,17 @@ combined-stream@^1.0.8:
   dependencies:
     delayed-stream "~1.0.0"
 
-debug@^4.1.1:
-  version "4.3.2"
-  resolved "https://registry.yarnpkg.com/debug/-/debug-4.3.2.tgz#f0a49c18ac8779e31d4a0c6029dfb76873c7428b"
-  integrity sha512-mOp8wKcvj7XxC78zLgw/ZA+6TSgkoE2C/ienthhRD298T7UNwAg9diBpLRxC0mOezLl4B0xV7M0cCO6P/O0Xhw==
+debug@^2.2.0:
+  version "2.6.9"
+  resolved "https://registry.yarnpkg.com/debug/-/debug-2.6.9.tgz#5d128515df134ff327e90a4c93f4e077a536341f"
+  integrity sha512-bC7ElrdJaJnPbAP+1EotYvqZsb3ecl5wi6Bfi6BJTUcNowp6cvspg0jXznRTKDjm/E7AdgFBVeAPVMNcKGsHMA==
   dependencies:
-    ms "2.1.2"
+    ms "2.0.0"
 
-decimal.js@^10.2.0:
-  version "10.3.1"
-  resolved "https://registry.yarnpkg.com/decimal.js/-/decimal.js-10.3.1.tgz#d8c3a444a9c6774ba60ca6ad7261c3a94fd5e783"
-  integrity sha512-V0pfhfr8suzyPGOx3nmq4aHqabehUZn6Ch9kyFpV79TGDTWFmHqUqXdabR7QHqxzrYolF4+tVmJhUG4OURg5dQ==
+decimal.js@^7.2.3:
+  version "7.5.1"
+  resolved "https://registry.yarnpkg.com/decimal.js/-/decimal.js-7.5.1.tgz#cf4cf5eeb9faa24fc4ee6af361faebb7bfcca2ce"
+  integrity sha512-1K5Y6MykxQYfHBcFfAj2uBaLmwreq4MsjsvrlgcEOvg+X82IeeXlIVIVkBMiypksu+yo9vcYP6lfU3qTedofSQ==
 
 deep-equal@^2.0.5:
   version "2.0.5"
@@ -204,18 +204,18 @@ get-intrinsic@^1.0.1, get-intrinsic@^1.0.2, get-intrinsic@^1.1.0, get-intrinsic@
     has "^1.0.3"
     has-symbols "^1.0.1"
 
-hap-nodejs@^0.5.6:
-  version "0.5.11"
-  resolved "https://registry.yarnpkg.com/hap-nodejs/-/hap-nodejs-0.5.11.tgz#8b9bd71c889061be238bd84db8e818cefc375684"
-  integrity sha512-l6jSuiN3IrTn7wEKg8GrUDoslUJDkP1dhmGpkBTRCLE9bA5V1RlBtVL4Sg9rHlPYbwIwUlq3qXa8gDiVVNCOwA==
+hap-nodejs@0.5.6:
+  version "0.5.6"
+  resolved "https://registry.yarnpkg.com/hap-nodejs/-/hap-nodejs-0.5.6.tgz#39423a62bfbd759d70adcfeca6f143e1b76c16e6"
+  integrity sha512-hK6HaRUKhO948roA/SF9+5t61qyAWsTCj9SeR3qTt9uQIyIWUpKIAiJlNQADMTb4LcJwC0yaVexw8cU5z2wxNw==
   dependencies:
     bonjour-hap "^3.5.1"
-    debug "^4.1.1"
-    decimal.js "^10.2.0"
+    debug "^2.2.0"
+    decimal.js "^7.2.3"
     fast-srp-hap "^1.0.1"
     ip "^1.1.3"
     node-persist "^0.0.11"
-    tweetnacl "^1.0.3"
+    tweetnacl "^1.0.1"
 
 has-bigints@^1.0.1:
   version "1.0.1"
@@ -396,10 +396,10 @@ mkdirp@~0.5.1:
   dependencies:
     minimist "^1.2.5"
 
-ms@2.1.2:
-  version "2.1.2"
-  resolved "https://registry.yarnpkg.com/ms/-/ms-2.1.2.tgz#d09d1f357b443f493382a8eb3ccd183872ae6009"
-  integrity sha512-sGkPx+VjMtmA6MX27oA4FBFELFCZZ4S4XqeGOXCv68tT+jb3vk/RyaKWP0PTKyWtmLSM0b+adUTEvbs1PEaH2w==
+ms@2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/ms/-/ms-2.0.0.tgz#5608aeadfc00be6c2901df5f9861788de0d597c8"
+  integrity sha512-Tpp60P6IUJDTuOq/5Z8cdskzJujfwqfOTkrwIwj7IRISpnkJnT6SyJ4PCPnGMoFjC9ddhal5KVIYtAt97ix05A==
 
 multicast-dns-service-types@^1.1.0:
   version "1.1.0"
@@ -458,7 +458,7 @@ object.assign@^4.1.2:
     has-symbols "^1.0.1"
     object-keys "^1.1.1"
 
-prettier@^1.19.1:
+prettier@1.19.1:
   version "1.19.1"
   resolved "https://registry.yarnpkg.com/prettier/-/prettier-1.19.1.tgz#f7d7f5ff8a9cd872a7be4ca142095956a60797cb"
   integrity sha512-s7PoyDv/II1ObgQunCbB9PdLmUcBZcnWOcxDh7O0N/UwDEsHyqkW+Qh28jW+mVuCdx7gLB0BotYI1Y6uI9iyew==
@@ -511,20 +511,20 @@ thunky@^1.0.2:
   resolved "https://registry.yarnpkg.com/thunky/-/thunky-1.1.0.tgz#5abaf714a9405db0504732bbccd2cedd9ef9537d"
   integrity sha512-eHY7nBftgThBqOyHGVN+l8gF0BucP09fMo0oO/Lb0w1OF80dJv+lDVpXG60WMQvkcxAkNybKsrEIE3ZtKGmPrA==
 
-tweetnacl@^1.0.3:
+tweetnacl@^1.0.1:
   version "1.0.3"
   resolved "https://registry.yarnpkg.com/tweetnacl/-/tweetnacl-1.0.3.tgz#ac0af71680458d8a6378d0d0d050ab1407d35596"
   integrity sha512-6rt+RN7aOi1nGMyC4Xa5DdYiukl2UWCbcJft7YhxReBGQD7OAM8Pbxw6YMo4r2diNEA8FEmu32YOn9rhaiE5yw==
 
-type-safe-json-decoder@^0.2.0:
+type-safe-json-decoder@0.2.0, type-safe-json-decoder@^0.2.0:
   version "0.2.0"
   resolved "https://registry.yarnpkg.com/type-safe-json-decoder/-/type-safe-json-decoder-0.2.0.tgz#0d96b1f60bd293a55cb263d6ec670fc1fff0e026"
-  integrity sha1-DZax9gvSk6VcsmPW7GcPwf/w4CY=
+  integrity sha512-gpePAxBUU3MrluvRkLJZ/Hs1gOquLzLq1HPb46YDetKNLyvYNtajCdmIJ0SUqPKHay+nPseDMjBmqBvpOzZJFg==
 
-typescript@^3.7.5:
-  version "3.9.10"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.9.10.tgz#70f3910ac7a51ed6bef79da7800690b19bf778b8"
-  integrity sha512-w6fIxVE/H1PkLKcCPsFqKE7Kv7QUwhU8qQY2MueZXWx5cPZdwFupLgKK3vntcK98BtNHZtAF4LA/yl2a7k8R6Q==
+typescript@3.7.5:
+  version "3.7.5"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.7.5.tgz#0692e21f65fd4108b9330238aac11dd2e177a1ae"
+  integrity sha512-/P5lkRXkWHNAbcJIiHPfRoKqyd7bsyCma1hZNUGfn20qm64T6ZBlrzprymeu918H+mB/0rIg2gGK/BXkhhYgBw==
 
 unbox-primitive@^1.0.1:
   version "1.0.1"
@@ -569,7 +569,7 @@ which-typed-array@^1.1.2:
     has-tostringtag "^1.0.0"
     is-typed-array "^1.1.7"
 
-yalesyncalarm@^2.0.4:
+yalesyncalarm@2.0.4:
   version "2.0.4"
   resolved "https://registry.yarnpkg.com/yalesyncalarm/-/yalesyncalarm-2.0.4.tgz#b22146a72973ada1545c03945a903ae1e8c436f3"
   integrity sha512-CgSdIaMnjV/P9/GtAmhoU0f/q6G2mw6NRXmLYsEduJTEulLXQvMXFse3w/98twvMLVPT5stlh1BrmoUACvO0ZQ==
